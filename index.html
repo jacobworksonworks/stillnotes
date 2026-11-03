@@ -69,7 +69,7 @@ html,body{min-height:100%;overflow:hidden}
 }
 @media(max-height:520px){.app{grid-template-rows:44px minmax(0,1fr) auto}.top{min-height:44px}.workspace{grid-template-rows:38px minmax(0,1fr)}.editor-wrap{padding-top:14px}.status{padding-top:4px;padding-bottom:4px}}
 </style></head>
-<body><div class="app" id="app"><header class="top"><div class="brand">   <img src="./logo.png" alt="" class="brand-logo">   STILL <span>/ a quiet place to write.. amirite?</span> </div><div class="top-actions"><button class="iconbtn" id="timerBtn" title="Writing timer">◷</button><button class="iconbtn" id="statsBtn" title="Statistics">▤</button><button class="iconbtn" id="toolsBtn" title="Tools">⌘</button><button class="iconbtn" id="prefsBtn" title="Preferences">⚙</button><button class="iconbtn" id="focusBtn" title="Focus mode">⤢</button></div></header>
+<body><div class="app" id="app"><header class="top"><div class="brand">   <img src="./logo.png" alt="" class="brand-logo">   STILL <span>/ a quiet place to write.. amirite?</span> </div><div class="top-actions"><button class="iconbtn" id="timerBtn" title="Writing timer">◷</button><button class="iconbtn" id="statsBtn" title="Statistics">▤</button><button class="iconbtn" id="toolsBtn" title="Tools">⌘</button><button class="iconbtn" id="prefsBtn" title="Preferences"></button><button class="iconbtn" id="focusBtn" title="Focus mode">⤢</button></div></header>
 <div class="layout"><aside class="sidebar"><div class="side-head"><span>Notes</span><button class="btn" id="newNote">＋ New</button></div><div class="note-list" id="noteList"></div><div class="side-bottom"><button class="side-link" id="tasksBtn">☷ &nbsp; Tasks</button><button class="side-link" id="snapBtn">↶ &nbsp; Snapshots</button><button class="side-link" id="importBtn">＋ &nbsp; Import text file</button><input type="file" id="fileInput" accept=".txt,.md,.html,text/plain,text/markdown" hidden></div></aside>
 <main class="workspace"><div class="toolbar"><button class="btn" id="downloadBtn" title="Download plain text">Save</button><button class="btn" id="copyBtn">Copy</button><button class="btn" id="htmlBtn">HTML</button><button class="btn" id="pdfBtn">PDF</button><button class="btn" id="shareBtn">Share</button><button class="btn" id="floatBtn">Float</button><button class="btn" id="markdownBtn">Preview</button><span class="tool-sep"></span><button class="btn" id="symbolsBtn">Symbols</button><button class="btn hide-focus" id="soundBtn" title="Ambient sound">Sound</button><span class="tool-label" id="docLabel">Untitled</span></div><section class="editor-wrap"><div class="paper"><textarea class="title-input" id="noteTitle" rows="1" placeholder="Untitled" spellcheck="false"></textarea><textarea class="editor" id="editor" placeholder="Start writing…" spellcheck="true"></textarea><article class="preview hidden" id="preview"></article></div></section></main></div>
 <footer class="status"><span id="wordCount">0 words</span><span id="charCount">0 characters</span><span id="lineCount">Ln 1, Col 1</span><span id="timerStatus">00:00</span><span class="save"><i class="dot"></i><span id="saveStatus">Saved locally</span></span></footer></div>
@@ -89,7 +89,7 @@ function preferences(){let p=data.prefs;showModal('Preferences',`<div class="fie
 function applyPrefs(){let e=$('editor'),p=data.prefs;e.className='editor '+(p.font==='serif'?'':p.font)+(p.narrow?' narrow':'');e.style.fontSize=p.size+'px';e.spellcheck=p.spell}
 function snapshots(){let n=current();showModal('Snapshots',`<p class="muted" style="font-size:11px">Save a point-in-time copy before making a big change.</p><div class="toolrow"><button id="makeSnap">Save current version</button></div><div id="snapList">${(n.snapshots||[]).slice().reverse().map((s,i)=>`<div class="field"><span>${new Date(s.time).toLocaleString()} <small class="muted">· ${s.body.length} chars</small></span><button class="btn" data-restore="${n.snapshots.length-1-i}">Restore</button></div>`).join('')||'<p class="muted">No snapshots yet.</p>'}</div>`);$('makeSnap').onclick=()=>{n.snapshots=n.snapshots||[];n.snapshots.push({time:Date.now(),title:$('noteTitle').value,body:$('editor').value});if(n.snapshots.length>30)n.snapshots.shift();persist();closeModal();snapshots()};$('snapList').querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{let s=n.snapshots[+b.dataset.restore];if(confirm('Restore this snapshot? Current text will be replaced.')){$('noteTitle').value=s.title;$('editor').value=s.body;schedule();closeModal();updateCounts()}})}
 function textTools(){showModal('Text tools',`<label class="muted" style="font-size:11px">Apply to the current note or selected text.</label><div class="toolrow"><button data-op="upper">UPPERCASE</button><button data-op="lower">lowercase</button><button data-op="title">Title Case</button><button data-op="sentence">Sentence case</button><button data-op="trim">Trim spaces</button><button data-op="dedupe">Remove duplicate lines</button><button data-op="sort">Sort lines</button><button data-op="reverse">Reverse lines</button><button data-op="number">Number lines</button><button data-op="clear">Remove blank lines</button></div><div class="field"><span>Find and replace</span></div><input id="findText" placeholder="Find" style="width:100%;margin:5px 0;background:#121416;border:1px solid var(--line);padding:8px"><input id="replaceText" placeholder="Replace with" style="width:100%;background:#121416;border:1px solid var(--line);padding:8px"><div class="toolrow"><button id="replaceBtn">Replace all</button></div>`);$('modalBody').querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>{let e=$('editor'),start=e.selectionStart,end=e.selectionEnd,selected=start!==end,src=selected?e.value.slice(start,end):e.value,lines=src.split('\n'),out=src;switch(b.dataset.op){case'upper':out=src.toUpperCase();break;case'lower':out=src.toLowerCase();break;case'title':out=src.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());break;case'sentence':out=src.toLowerCase().replace(/(^\s*|[.!?]\s+)([a-z])/g,(m,a,c)=>a+c.toUpperCase());break;case'trim':out=lines.map(x=>x.trim()).join('\n').replace(/\n{3,}/g,'\n\n');break;case'dedupe':out=[...new Set(lines)].join('\n');break;case'sort':out=lines.sort((a,b)=>a.localeCompare(b)).join('\n');break;case'reverse':out=lines.reverse().join('\n');break;case'number':out=lines.map((x,i)=>(i+1)+'. '+x).join('\n');break;case'clear':out=lines.filter(x=>x.trim()).join('\n')}if(selected)e.setRangeText(out,start,end,'select');else e.value=out;schedule();updateCounts()});$('replaceBtn').onclick=()=>{let a=$('findText').value;if(!a)return;let e=$('editor');e.value=e.value.split(a).join($('replaceText').value);schedule();updateCounts();toast('Replaced')};}
-const symbols='• · … — – “ ” ‘ ’ « » ¿ ¡ § ¶ † ‡ ° № ↩ ↪ ← ↑ → ↓ ↔ ⇒ ⇐ ⇑ ⇓ ⇔ ± × ÷ ≈ ≠ ≤ ≥ ∞ ∑ ∏ ∫ √ ∛ ∂ ∇ ∅ ∈ ∉ ∩ ∪ ∧ ∨ ⊕ ⊗ ⊂ ⊃ ⊆ ⊇ ⊥ ∠ ★ ☆ ● ○ ■ □ ▲ △ ◆ ◇ ♥ ♡ ☀ ☁ ☂ ☃ ☕ ☎ ⚑ ⚠ ✓ ✔ ✕ ✦ ✧ ✉ ⌘ ⏎ ⌫ € £ ¥ ₹ ₩ ½ ¼ ¾ ⅓ ⅔ α β γ δ ε θ λ μ π σ φ ω Δ Σ Ω'.split(' ');
+const symbols='• · … — – “ ” ‘ ’ « » ¿ ¡ § ¶ † ‡ ° №   ← ↑ → ↓  ⇒ ⇐ ⇑ ⇓ ⇔ ± × ÷ ≈ ≠ ≤ ≥ ∞ ∑ ∏ ∫ √ ∛ ∂ ∇ ∅ ∈ ∉ ∩ ∪ ∧ ∨ ⊕ ⊗ ⊂ ⊃ ⊆ ⊇ ⊥ ∠ ★ ☆ ● ○ ■ □ ▲ △ ◆ ◇  ♡       ⚑  ✓  ✕ ✦ ✧  ⌘ ⏎ ⌫ € £ ¥ ₹ ₩ ½ ¼ ¾ ⅓ ⅔ α β γ δ ε θ λ μ π σ φ ω Δ Σ Ω'.split(' ');
 function symbolPicker(){showModal('Insert symbol',`<input id="symbolSearch" placeholder="Search symbols" style="width:100%;padding:8px;background:#121416;border:1px solid var(--line)"><div class="symbol-grid" id="symbolGrid">${symbols.map(s=>`<button>${s}</button>`).join('')}</div>`);$('symbolGrid').querySelectorAll('button').forEach(b=>b.onclick=()=>{insertAtCursor(b.textContent);closeModal()});$('symbolSearch').oninput=()=>{let q=$('symbolSearch').value;$('symbolGrid').querySelectorAll('button').forEach(b=>b.classList.toggle('hidden',q&&!b.textContent.toLowerCase().includes(q.toLowerCase())))} }
 function insertAtCursor(s){let e=$('editor'),a=e.selectionStart,b=e.selectionEnd;e.setRangeText(s,a,b,'end');e.focus();schedule();updateCounts()}
 function togglePreview(){previewing=!previewing;if(previewing){$('preview').innerHTML=markdownToHTML($('editor').value);$('preview').classList.remove('hidden');$('editor').classList.add('hidden');$('markdownBtn').textContent='Edit'}else{$('preview').classList.add('hidden');$('editor').classList.remove('hidden');$('markdownBtn').textContent='Preview'}}function markdownToHTML(s){let x=escapeHTML(s);x=x.replace(/^### (.*)$/gm,'<h3>$1</h3>').replace(/^## (.*)$/gm,'<h2>$1</h2>').replace(/^# (.*)$/gm,'<h1>$1</h1>').replace(/^&gt; (.*)$/gm,'<blockquote>$1</blockquote>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');return x.split(/\n{2,}/).map(p=>/^<h|^<blockquote/.test(p)?p:'<p>'+p.replace(/\n/g,'<br>')+'</p>').join('')}
@@ -121,7 +121,122 @@ function downloadText(name,text,type){let a=document.createElement('a'),u=URL.cr
 function exportHTML(){let n=current(),title=$('noteTitle').value||'Untitled',body=$('editor').value;downloadText((title.replace(/[\\/:*?"<>|]/g,'_')||'note')+'.html','<!doctype html><html><head><meta charset="utf-8"><title>'+escapeHTML(title)+'</title><style>body{max-width:760px;margin:4rem auto;padding:0 1rem;font:17px/1.8 Georgia,serif;color:#222}pre{white-space:pre-wrap}</style></head><body><h1>'+escapeHTML(title)+'</h1><pre>'+escapeHTML(body)+'</pre></body></html>','text/html')}
 function exportPDF(){let title=$('noteTitle').value||'Untitled',body=$('editor').value,w=window.open('','_blank');if(!w){toast('Allow pop-ups to print');return}w.document.write('<!doctype html><meta charset="utf-8"><title>'+escapeHTML(title)+'</title><style>body{max-width:760px;margin:40px auto;font:16px/1.7 Georgia,serif;white-space:pre-wrap;color:#111}@media print{body{margin:0}}</style><h1>'+escapeHTML(title)+'</h1><main>'+escapeHTML(body)+'</main>');w.document.close();w.focus();setTimeout(()=>w.print(),250)}
 async function shareNote(){let text=$('noteTitle').value+'\n\n'+$('editor').value;try{if(navigator.share)await navigator.share({title:$('noteTitle').value||'Note',text});else{await navigator.clipboard.writeText(text);toast('Copied for sharing')}}catch(e){}}
-async function floatNote(){if(!('documentPictureInPicture'in window)){toast('Floating window is not supported in this browser');return}try{let w=await documentPictureInPicture.requestWindow({width:420,height:520});w.document.body.style.cssText='margin:0;background:#111214;color:#e4e5e7;font:14px system-ui;padding:14px';let t=w.document.createElement('textarea');t.value=$('editor').value;t.style.cssText='width:100%;height:90%;box-sizing:border-box;background:#17191c;color:#e4e5e7;border:1px solid #292d32;padding:12px;font:15px/1.7 Georgia;resize:none';w.document.body.append(t);t.addEventListener('input',()=>{$('editor').value=t.value;schedule();updateCounts()});$('editor').addEventListener('input',()=>{if(w.closed)return;if(t.value!==$('editor').value)t.value=$('editor').value});w.addEventListener('pagehide',()=>{})}catch(e){toast('Could not open floating window')}}
+
+async function floatNote() {
+  if (!('documentPictureInPicture' in window)) {
+    toast('Floating window is not supported in this browser');
+    return;
+  }
+
+  try {
+    const w = await documentPictureInPicture.requestWindow({
+      width: 560,
+      height: 700
+    });
+
+    // Floating window appearance
+    const style = w.document.createElement('style');
+    style.textContent = `
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: #111214;
+        color: #e4e5e7;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      textarea {
+        display: block;
+        flex: 1;
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        margin: 0;
+        padding: clamp(10px, 3%, 22px);
+        border: none;
+        outline: none;
+        resize: none;
+        overflow: auto;
+        background: #17191c;
+        color: #e4e5e7;
+        font-family: Georgia, serif;
+        font-size: clamp(11px, 2.5vw, 17px);
+        line-height: 1.7;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        tab-size: 4;
+      }
+
+      textarea::-webkit-scrollbar {
+        width: 5px;
+      }
+
+      textarea::-webkit-scrollbar-thumb {
+        background: #393e43;
+        border-radius: 5px;
+      }
+    `;
+
+    w.document.head.appendChild(style);
+
+    // Create floating editor
+    const t = w.document.createElement('textarea');
+    t.value = $('editor').value;
+    t.placeholder = 'Start writing…';
+    w.document.body.appendChild(t);
+
+    // Keep both editors synchronized
+    let updating = false;
+
+    t.addEventListener('input', () => {
+      if (updating) return;
+      updating = true;
+
+      $('editor').value = t.value;
+      schedule();
+      updateCounts();
+
+      updating = false;
+    });
+
+    $('editor').addEventListener('input', () => {
+      if (w.closed || updating) return;
+
+      if (t.value !== $('editor').value) {
+        updating = true;
+        t.value = $('editor').value;
+        updating = false;
+      }
+    });
+
+    // Keep the floating editor's text responsive to window resizing
+    const resizeObserver = new w.ResizeObserver(() => {
+      const width = w.document.body.clientWidth;
+      const fontSize = Math.max(11, Math.min(17, width * 0.025));
+      t.style.fontSize = fontSize + 'px';
+    });
+
+    resizeObserver.observe(w.document.body);
+
+    w.addEventListener('pagehide', () => {
+      resizeObserver.disconnect();
+    });
+
+  } catch (e) {
+    toast('Could not open floating window');
+  }
+}
 $('editor').addEventListener('input',()=>{schedule();updateCounts();if(previewing)$('preview').innerHTML=markdownToHTML($('editor').value);if(data.prefs.typewriter)typeSound();if(data.prefs.breaks&&seconds>0&&seconds%60===0&&seconds>=data.prefs.breakMins*60&&seconds!==breakAt){breakAt=seconds;toast('Time for a short break')}});$('noteTitle').addEventListener('input',()=>{schedule();$('docLabel').textContent=$('noteTitle').value||'Untitled'});$('editor').addEventListener('click',updateCounts);$('editor').addEventListener('keyup',updateCounts);$('editor').addEventListener('keydown',e=>{if(e.key==='Tab'&&data.prefs.tab){e.preventDefault();insertAtCursor('    ')}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();exportFile('txt')}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();showModal('Keyboard shortcuts',`<div class="field"><span>Ctrl/⌘ + S</span><span>Save as text</span></div><div class="field"><span>Ctrl/⌘ + ,</span><span>Preferences</span></div><div class="field"><span>Alt + F</span><span>Focus mode</span></div><div class="field"><span>Ctrl/⌘ + Shift + O</span><span>Insert symbol</span></div><div class="field"><span>Ctrl/⌘ + Shift + Delete</span><span>Clear note</span></div><div class="field"><span>Tab</span><span>Indent</span></div>`)}});
 function typeSound(){try{let c=typeSound.ctx||(typeSound.ctx=new(window.AudioContext||window.webkitAudioContext)()),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=800+Math.random()*300;g.gain.value=.012;o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+.018)}catch(e){}}
 $('newNote').onclick=newNote;$('downloadBtn').onclick=()=>exportFile('txt');$('htmlBtn').onclick=exportHTML;$('pdfBtn').onclick=exportPDF;$('shareBtn').onclick=shareNote;$('floatBtn').onclick=floatNote;$('copyBtn').onclick=()=>{navigator.clipboard?.writeText($('editor').value).then(()=>toast('Copied')).catch(()=>toast('Clipboard unavailable'))};$('markdownBtn').onclick=togglePreview;$('symbolsBtn').onclick=symbolPicker;$('statsBtn').onclick=stats;$('prefsBtn').onclick=preferences;$('toolsBtn').onclick=toolHub;$('focusBtn').onclick=toggleFocus;$('timerBtn').onclick=timerModal;$('snapBtn').onclick=snapshots;$('tasksBtn').onclick=tasks;$('soundBtn').onclick=ambientToggle;$('importBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{newNote();$('noteTitle').value=f.name.replace(/\.[^.]+$/,'');$('editor').value=r.result;schedule();updateCounts()};r.readAsText(f);e.target.value=''};$('modalClose').onclick=closeModal;$('modalOverlay').onclick=e=>{if(e.target===$('modalOverlay'))closeModal()};document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key===','){e.preventDefault();preferences()}if(e.altKey&&e.key.toLowerCase()==='f'){e.preventDefault();toggleFocus()}if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key.toLowerCase()==='o'){e.preventDefault();symbolPicker()}if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='Delete'){e.preventDefault();if(confirm('Clear this note?')){$('editor').value='';schedule();updateCounts()}}});
